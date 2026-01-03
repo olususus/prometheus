@@ -16,10 +16,6 @@
 #include <algorithm>
 #include <vector>
 #include <set>
-#include <keystone/keystone.h>
-#include <keystone/x86.h>
-#include <capstone/x86.h>
-#include <capstone/capstone.h>
 #include <string>
 #include <format>
 #include <thread>
