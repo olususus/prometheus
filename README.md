@@ -7,7 +7,7 @@ Hey and welcome, thanks for stopping by!
     - [Optional stuff](#optional-stuff)
     - [Patcher \& how it works](#patcher--how-it-works)
   - [Compilation](#compilation)
-- [2. Usage](#2-usage)
+- [2. Usage (For Beginners)](#2-usage-for-beginners)
   - [Launching](#launching)
   - [Top Bar Menu Guide](#top-bar-menu-guide)
     - [1. ECS (Entity Component System)](#1-ecs-entity-component-system)
@@ -83,7 +83,7 @@ The patcher itself just goes to TlsCallback_0 and patches some bytes so the exec
 * Initialize the vcpkg repository with the ps1 file located at external/vcpkg/scripts/bootstrap.ps1
 * Compile as Release/x64. No other configuration is tested  (some flags and settings are missing).
 
-# 2. Usage
+# 2. Usage (For Beginners)
 
 ## Launching
 - Open `GameClientApp.patched.exe`
@@ -100,15 +100,15 @@ Displays the underlying architecture of the game entities. This is the lowest le
 
 ### 2. Game
 Contains game-logic specific tools.
-- **Key Feature**: **Player Spawner DeLuxe**. This is the recommended tool for spawning heroes instead of switching characters using the ingame menu.
-- Other items: Game Data, Ini Settings, Movement helpers.
+- **Player Spawner DeLuxe**: This is the recommended tool for spawning heroes instead of switching characters using the ingame menu.
+- **Other items**: Game Data, Ini Settings, Movement helpers.
 
 ### 3. Jam
 Handles networking and protocol layers.
 - **Items**: Jam Messages, Jam Protocol.
 
 ### 4. Resource
-Advanced debugging resources and asset management.
+Advanced debugging resources and asset management. Again, not really interesting unless you actually know what you're doing :c
 - **Items**: Asset Pack Manager, Type Comments, Filetype Window.
 
 ### 5. STU
@@ -121,21 +121,18 @@ Scripting and configuration tools.
 
 ### 7. Tools
 General utility tools for server and map management.
-- **Awful Demo Server**: Used for joining from multiple instances.
+- **Awful Demo Server**: Used for joining from multiple instances. (It lives up to its name)
 - **LobbyMap Tester**: Changes the map visible in the background of the lobby.
 
 ### 8. Viewmodel
 Tools for viewing and selecting models.
 - **Items**: Viewmodel Selector, Write Blocker.
-- **Note**: **DP Load** is located next to this tab and is used for loading into the game.
 
 ### 9. Map
-Used for loading directly into a specific map.
-- Lists available maps like Automation, Cairo, Gibraltar, etc.
+Used for loading directly into a specific map (so the main thing you want probably).
 
 ### 10. Lobby Map
-Another method for changing the lobby background map.
-- Select from various login scenes and map environments.
+Pretty much the same as LobbyMap Tester.
 
 
 
