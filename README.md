@@ -9,6 +9,17 @@ Hey and welcome, thanks for stopping by!
   - [Compilation](#compilation)
 - [2. Usage](#2-usage)
   - [Launching](#launching)
+  - [Top Bar Menu Guide](#top-bar-menu-guide)
+    - [1. ECS (Entity Component System)](#1-ecs-entity-component-system)
+    - [2. Game](#2-game)
+    - [3. Jam](#3-jam)
+    - [4. Resource](#4-resource)
+    - [5. STU](#5-stu)
+    - [6. Statescript](#6-statescript)
+    - [7. Tools](#7-tools)
+    - [8. Viewmodel](#8-viewmodel)
+    - [9. Map](#9-map)
+    - [10. Lobby Map](#10-lobby-map)
 - [3. Game internals](#2-game-internals)
   - [Managers](#managers)
   - [ECS](#ecs)
@@ -29,7 +40,7 @@ Hey and welcome, thanks for stopping by!
 
 # 1. Download
 
-If you havent already, download the 0.8 beta from [archive.org](https://archive.org/details/overwatch-beta-0-8-0-24919) and extract the files somewhere.
+If you haven't already, download the 0.8 beta from [archive.org](https://archive.org/details/overwatch-beta-0-8-0-24919) and extract the files somewhere.
 * ⚠️ Make sure that you don't download any malicious executable and verify that GameClientApp.exe is signed by Blizzard. The signature will get broken after applying the patcher.
 * You can safely remove the BlizzardError directory.
 
@@ -70,7 +81,7 @@ The patcher itself just goes to TlsCallback_0 and patches some bytes so the exec
 * You need Visual Studio 2022. I have not tested it on any other platform
 * Make sure to initialize the submodules / clone recursively
 * Initialize the vcpkg repository with the ps1 file located at external/vcpkg/scripts/bootstrap.ps1
-* Compile as Relaese/x64. No other configuration is tested  (some flags and settings are missing).
+* Compile as Release/x64. No other configuration is tested  (some flags and settings are missing).
 
 # 2. Usage
 
@@ -79,23 +90,59 @@ The patcher itself just goes to TlsCallback_0 and patches some bytes so the exec
 - Wait for the game to get into the loading state
 - Click "Demo" in the top bar, then click "DP Load". This should get you past the loading screen into the lobby.
 
-## Navigating
-The main lobby buttons will NOT work, since they will try to connect you with a server. Instead, you should navigate the game using the top bar
+## Top Bar Menu Guide
 
-### Loading into Maps
-To load into a Map, press the "Map" button, then select a map.
+The top navigation bar is your main tool for interacting with the game. Here is what each tab does (Note: The menus contain more options than listed below, but we've only included the ones that are actually usable or relevant):
 
-Some maps will spawn you in the void, use the Up and Down arrow to teleport yourself up and down, use WASD keys to then move yourself into the map itself.
+### 1. ECS (Entity Component System)
+Displays the underlying architecture of the game entities. This is the lowest level and not really interesting.
+- **Notable items**: Component Dependencies, Entities, Systems.
 
-### Changing Lobby Map
-To change the map shown in the lobby, press the "Lobby Map" button, then select a map.
+### 2. Game
+Contains game-logic specific tools.
+- **Key Feature**: **Player Spawner DeLuxe**. This is the recommended tool for spawning heroes instead of switching characters using the ingame menu.
+- Other items: Game Data, Ini Settings, Movement helpers.
+
+### 3. Jam
+Handles networking and protocol layers.
+- **Items**: Jam Messages, Jam Protocol.
+
+### 4. Resource
+Advanced debugging resources and asset management.
+- **Items**: Asset Pack Manager, Type Comments, Filetype Window.
+
+### 5. STU
+Tools related to structured data and registry.
+- **Items**: STU Explorer, STU Registry.
+
+### 6. Statescript
+Scripting and configuration tools.
+- **Items**: Config Var Edit, Statescript Graph Neo.
+
+### 7. Tools
+General utility tools for server and map management.
+- **Awful Demo Server**: Used for joining from multiple instances.
+- **LobbyMap Tester**: Changes the map visible in the background of the lobby.
+
+### 8. Viewmodel
+Tools for viewing and selecting models.
+- **Items**: Viewmodel Selector, Write Blocker.
+- **Note**: **DP Load** is located next to this tab and is used for loading into the game.
+
+### 9. Map
+Used for loading directly into a specific map.
+- Lists available maps like Automation, Cairo, Gibraltar, etc.
+
+### 10. Lobby Map
+Another method for changing the lobby background map.
+- Select from various login scenes and map environments.
 
 
 
 # 3. Game internals
 
 ## Managers
-The first think Overwatch does is initialize all its "Managers". They handle things such as Dataflow, CASC, Window management, etc. This is the lowest level and not really interesting.
+The first thing Overwatch does is initialize all its "Managers". They handle things such as Dataflow, CASC, Window management, etc. This is the lowest level and not really interesting.
 
 ## ECS
 Afterwards, all the Entity Admins get initialized. First the Lobby, then Game and finally Replay.
