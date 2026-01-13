@@ -500,10 +500,13 @@ namespace imgui_helpers {
 					openCopyWindow((__int64)value);
 				}
 				else {
-					//char buf[32];
-					//sprintf_s(buf, sel == 1 ? format_specifier : format_specifier_2, *value);
-					auto buf = sel == 1 ? std::format(std::string(format_specifier).length() == 3 ? "{:d}" : "{:x}", *value) : std::format("{:x}", *value);
-					openCopyWindow(buf);
+					char buf[64];
+					if (sel == 1) {
+						sprintf_s(buf, format_specifier, *value);
+					} else {
+						sprintf_s(buf, "{:x}", *value);
+					}
+					openCopyWindow(std::string(buf));
 				}
 			}));
 		}

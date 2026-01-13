@@ -148,7 +148,7 @@ public:
 		auto self = from->this_instance.lock();
 		if (!self)
 			return {};
-		for (auto& wind : *s_all_windows) {
+		for (auto& wind : s_all_windows()) {
 			if (dynamic_cast<T*>(wind.second.helper_instance.get()) != nullptr) {
 				if (is_dependent) {
 					for (auto& window : get_all_by_type(wind.second.helper_instance->get_window_type())) {
@@ -186,7 +186,7 @@ public:
 		auto self = from->this_instance.lock();
 		if (!self)
 			return {};
-		for (auto& wind : *s_all_windows) {
+		for (auto& wind : s_all_windows()) {
 			if (dynamic_cast<T*>(wind.second.helper_instance.get()) != nullptr) {
 				return add_window(wind.second.helper_instance->create_self(), from);
 			}
@@ -196,7 +196,7 @@ public:
 
 	template <typename T>
 	static inline std::shared_ptr<window> get_latest_if_exists(window* from) {
-		for (auto& window : *s_all_windows) {
+		for (auto& window : s_all_windows()) {
 			if (dynamic_cast<T*>(window.second.helper_instance.get()) != nullptr) {
 				auto result = get_docked(window.second.helper_instance->get_window_type(), from);
 				if (!result)

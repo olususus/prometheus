@@ -1,0 +1,20 @@
+{
+  "buildConfig": {
+    "defaultConfiguration": "Release",
+    "defaultPlatform": "x64",
+    "outputDirectory": "build/output",
+    "cleanBeforeBuild": false,
+    "verboseOutput": false
+  },
+  "paths": {
+    "solutionFile": "testinj.sln",
+    "patcherProject": "patcher/patcher.csproj",
+    "vcpkgExecutable": "external/vcpkg/vcpkg.exe"
+  },
+  "features": {
+    "buildCpp": true,
+    "buildCSharp": true,
+    "copyOutputs": true,
+    "generateZip": false
+  }
+}

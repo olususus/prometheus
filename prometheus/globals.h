@@ -4,7 +4,16 @@
 #include <string>
 #include <Windows.h>
 
-#include "intrin.h"
+enum class LogLevel {
+	INFO,
+	WARN,
+	ERR,
+	SUCCESS
+};
+
+namespace utils {
+	void log(LogLevel level, const std::string& msg);
+}
 
 #define owassert(expr) if (!(expr)) { printf("%s:%d\n", "FAILED ASSERTION:\nAssertion: " #expr "\nAt: " __FILE__, __LINE__); }
 
@@ -200,6 +209,23 @@ namespace globals {
 namespace utils {
 	inline std::string to_string_hex(int input) {
 		return std::format("{:x}", input);
+	}
+
+	inline void log(LogLevel level, const std::string& msg) {
+		switch (level) {
+		case LogLevel::INFO:
+			printf("\033[96m[*] %s\033[0m\n", msg.c_str()); // Cyan
+			break;
+		case LogLevel::WARN:
+			printf("\033[93m[~] %s\033[0m\n", msg.c_str()); // Yellow
+			break;
+		case LogLevel::ERR:
+			printf("\033[91m[!] %s\033[0m\n", msg.c_str()); // Red
+			break;
+		case LogLevel::SUCCESS:
+			printf("\033[92m[+] %s\033[0m\n", msg.c_str()); // Green
+			break;
+		}
 	}
 }
 

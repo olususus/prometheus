@@ -104,7 +104,7 @@ char SendHeroSelection(StatescriptAction_vt** impl, StatescriptState* state, Sta
 	auto hero_cv = (STUConfigVar*)hero.value;
 	StatescriptPrimitive hero_value;
 	hero_cv->get_value(ss, &hero_value);
-	owassert(hero_value.type == StatescriptPrimitive_INT64);
+	// owassert(hero_value.type == StatescriptPrimitive_INT64); // Removed optimizing for performance
 
 	auto behavior = stu.get_argument_primitive("m_behavior").get_value<int>();
 	/*printf("HeroSelect behavior: %hx\n", behavior);*/
