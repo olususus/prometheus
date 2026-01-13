@@ -273,6 +273,7 @@ const char* getClipboard(void*) {
     if (fn(0, &out)) {
         printf("GetClipboard succeessful\n");
         size_t len = strlen(out.get());
+        // Note: Caller must free the returned string with delete[]
         char* str = new char[len + 1];
         strcpy(str, out.get());
         return str;
