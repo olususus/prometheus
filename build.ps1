@@ -137,7 +137,7 @@ function Find-DotNetSdk {
             $version = & dotnet --version 2>$null
             if ($version) {
                 return @{
-                    Path = $dotlet.Source
+                    Path = $dotnet.Source
                     Version = $version
                     Found = $true
                 }
