@@ -7,7 +7,11 @@ namespace patcher
         [STAThread]
         public static void Main(string[] args)
         {
-            Console.WriteLine("Plwase open the unpatched GameClientApp.exe");
+            Console.WriteLine("============================================");
+            Console.WriteLine("  Prometheus Game Patcher");
+            Console.WriteLine("============================================\n");
+            Console.WriteLine("This will patch GameClientApp.exe to load prometheus.dll\n");
+            Console.WriteLine("Step 1: Select the UNPATCHED GameClientApp.exe");
 
             //Since i dont have the original patch anymore
             //this is just a diff lol
@@ -24,19 +28,83 @@ namespace patcher
             diffs.Add((0x137E10F, new byte[] { 0x04, 0x91, 0x49, 0x03, 0xC3, 0x48, 0x8D, 0x0D, 0x02, 0x00, 0x00 }));
             diffs.Add((0x137E11B, new byte[] { 0xFF, 0xE0, 0x69, 0x6E, 0x6A, 0x65, 0x63, 0x74, 0x2E, 0x64, 0x6C, 0x6C, 0x00}));
 
-            OpenFileDialog diag = new OpenFileDialog();
+            OpenFileDialog diag = new OpenFileDialog
+            {
+                Title = "Select GameClientApp.exe (UNPATCHED)",
+                Filter = "Game Executable|GameClientApp.exe|All Files|*.*",
+                CheckFileExists = true
+            };
+            
             if (diag.ShowDialog() == DialogResult.OK)
             {
-                Console.WriteLine(diag.FileName);
-                string resultFilename = Path.Combine(Path.GetDirectoryName(diag.FileName), "GameClientApp.patched.exe");
-                byte[] input = File.ReadAllBytes(diag.FileName);
-
-                foreach (var diff in diffs)
+                try
                 {
-                    Array.Copy(diff.Item2, 0, input, diff.Item1, diff.Item2.Length);
-                }
+                    Console.WriteLine($"\nSelected: {diag.FileName}");
+                    
+                    string? gameDir = Path.GetDirectoryName(diag.FileName);
+                    if (string.IsNullOrEmpty(gameDir))
+                    {
+                        Console.WriteLine("ERROR: Could not determine game directory");
+                        Console.WriteLine("Press any key to exit...");
+                        Console.ReadKey();
+                        return;
+                    }
+                    
+                    string resultFilename = Path.Combine(gameDir, "GameClientApp.patched.exe");
+                    string injectDllPath = Path.Combine(gameDir, "inject.dll");
+                    
+                    // Check if prometheus.dll exists in the current directory
+                    string prometheusDll = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "prometheus.dll");
+                    if (!File.Exists(prometheusDll))
+                    {
+                        Console.WriteLine("\nERROR: prometheus.dll not found!");
+                        Console.WriteLine($"Expected location: {prometheusDll}");
+                        Console.WriteLine("\nMake sure you:");
+                        Console.WriteLine("  1. Built the project first (run build.bat)");
+                        Console.WriteLine("  2. Run patcher.exe from the build\\output folder");
+                        Console.WriteLine("\nPress any key to exit...");
+                        Console.ReadKey();
+                        return;
+                    }
+                    
+                    Console.WriteLine("\nStep 2: Patching executable...");
+                    byte[] input = File.ReadAllBytes(diag.FileName);
 
-                File.WriteAllBytes(resultFilename, input);
+                    foreach (var diff in diffs)
+                    {
+                        Array.Copy(diff.Item2, 0, input, diff.Item1, diff.Item2.Length);
+                    }
+
+                    File.WriteAllBytes(resultFilename, input);
+                    Console.WriteLine($"  [OK] Created: {resultFilename}");
+                    
+                    Console.WriteLine("\nStep 3: Copying prometheus.dll as inject.dll...");
+                    File.Copy(prometheusDll, injectDllPath, overwrite: true);
+                    Console.WriteLine($"  [OK] Copied to: {injectDllPath}");
+                    
+                    Console.WriteLine("\n============================================");
+                    Console.WriteLine("  SUCCESS! Game patched successfully!");
+                    Console.WriteLine("============================================\n");
+                    Console.WriteLine("Files created:");
+                    Console.WriteLine($"  - {resultFilename}");
+                    Console.WriteLine($"  - {injectDllPath}");
+                    Console.WriteLine("\nTo run the game:");
+                    Console.WriteLine("  1. Launch GameClientApp.patched.exe");
+                    Console.WriteLine("  2. Keep inject.dll in the same folder");
+                    Console.WriteLine("\nPress any key to exit...");
+                    Console.ReadKey();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\nERROR: Patching failed!");
+                    Console.WriteLine($"Details: {ex.Message}");
+                    Console.WriteLine("\nPress any key to exit...");
+                    Console.ReadKey();
+                }
+            }
+            else
+            {
+                Console.WriteLine("\nCancelled by user.");
             }
         }
     }

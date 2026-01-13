@@ -51,6 +51,8 @@ $PatcherProject = Join-Path $ScriptDir "patcher\patcher.csproj"
 $CppOutputDir = Join-Path $ScriptDir "$Platform\$Configuration"
 $CSharpOutputDir = Join-Path $ScriptDir "patcher\bin\$Configuration\net8.0-windows"
 $FinalOutputDir = Join-Path $ScriptDir $OutputDir
+$script:MSBuildPath = $null
+$script:DotNetSdk = $null
 
 # Colors for output
 function Write-Step {
@@ -73,6 +75,103 @@ function Write-Info {
     Write-Host "  $Message" -ForegroundColor Gray
 }
 
+# Find MSBuild in Visual Studio installations
+function Find-MSBuild {
+    # Try to get from PATH first
+    $msbuild = Get-Command msbuild -ErrorAction SilentlyContinue
+    if ($msbuild) {
+        return $msbuild.Source
+    }
+    
+    # Search in common Visual Studio installation paths
+    $vsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    
+    if (Test-Path $vsWhere) {
+        Write-Info "Using vswhere to locate MSBuild..."
+        $vsPath = & $vsWhere -latest -requires Microsoft.Component.MSBuild -property installationPath
+        if ($vsPath) {
+            # Try different MSBuild locations
+            $msbuildPaths = @(
+                "$vsPath\MSBuild\Current\Bin\MSBuild.exe",
+                "$vsPath\MSBuild\Current\Bin\amd64\MSBuild.exe",
+                "$vsPath\Msbuild\15.0\Bin\MSBuild.exe"
+            )
+            
+            foreach ($path in $msbuildPaths) {
+                if (Test-Path $path) {
+                    return $path
+                }
+            }
+        }
+    }
+    
+    # Fallback: search common installation directories
+    $searchPaths = @(
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe"
+    )
+    
+    foreach ($path in $searchPaths) {
+        if (Test-Path $path) {
+            return $path
+        }
+    }
+    
+    return $null
+}
+
+# Find .NET SDK
+function Find-DotNetSdk {
+    # Check for dotnet command
+    $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+    if ($dotnet) {
+        try {
+            $version = & dotnet --version 2>$null
+            if ($version) {
+                return @{
+                    Path = $dotnet.Source
+                    Version = $version
+                    Found = $true
+                }
+            }
+        }
+        catch {
+            # dotnet command exists but failed to run
+        }
+    }
+    
+    # Check for .NET SDK in common locations
+    $sdkPaths = @(
+        "$env:ProgramFiles\dotnet\sdk",
+        "${env:ProgramFiles(x86)}\dotnet\sdk"
+    )
+    
+    foreach ($path in $sdkPaths) {
+        if (Test-Path $path) {
+            $versions = Get-ChildItem $path -Directory | Sort-Object Name -Descending
+            if ($versions) {
+                return @{
+                    Path = $path
+                    Version = $versions[0].Name
+                    Found = $true
+                }
+            }
+        }
+    }
+    
+    return @{
+        Found = $false
+    }
+}
+
 # Check for required tools
 function Test-Prerequisites {
     Write-Step "Checking prerequisites..."
@@ -80,12 +179,24 @@ function Test-Prerequisites {
     $hasErrors = $false
     
     # Check for MSBuild
-    $msbuild = Get-Command msbuild -ErrorAction SilentlyContinue
-    if (-not $msbuild) {
+    $script:MSBuildPath = Find-MSBuild
+    if (-not $script:MSBuildPath) {
         Write-Error "MSBuild not found. Please install Visual Studio 2022 or Build Tools."
+        Write-Info "Download from: https://visualstudio.microsoft.com/downloads/"
         $hasErrors = $true
     } else {
-        Write-Success "MSBuild found: $($msbuild.Source)"
+        Write-Success "MSBuild found: $script:MSBuildPath"
+    }
+    
+    # Check for .NET SDK
+    $script:DotNetSdk = Find-DotNetSdk
+    if (-not $script:DotNetSdk.Found) {
+        Write-Error ".NET 8 SDK not found. Required for C# patcher project."
+        Write-Info "Download from: https://dotnet.microsoft.com/download/dotnet/8.0"
+        Write-Info "Or install '.NET desktop development' workload in Visual Studio Installer"
+        $hasErrors = $true
+    } else {
+        Write-Success ".NET SDK found: $($script:DotNetSdk.Version)"
     }
     
     # Check for vcpkg
@@ -151,9 +262,9 @@ function Build-CppProject {
         $msbuildArgs += "/v:minimal"
     }
     
-    Write-Info "Running: msbuild $($msbuildArgs -join ' ')"
+    Write-Info "Running: $script:MSBuildPath $($msbuildArgs -join ' ')"
     
-    & msbuild $msbuildArgs
+    & $script:MSBuildPath $msbuildArgs
     
     if ($LASTEXITCODE -ne 0) {
         throw "C++ build failed with exit code $LASTEXITCODE"
@@ -174,24 +285,32 @@ function Build-CSharpProject {
     Write-Step "Building C# project (patcher)..."
     Write-Info "Configuration: $Configuration"
     
-    $msbuildArgs = @(
+    Write-Info "Publishing self-contained patcher..."
+    
+    # Use dotnet publish for self-contained single-file
+    $publishArgs = @(
+        "publish",
         "`"$PatcherProject`"",
-        "/p:Configuration=$Configuration",
-        "/m"
+        "-c", "$Configuration",
+        "-r", "win-x64",
+        "--self-contained",
+        "-p:PublishSingleFile=true",
+        "-p:EnableCompressionInSingleFile=true",
+        "-o", "`"$CSharpOutputDir`""
     )
     
     if ($Verbose) {
-        $msbuildArgs += "/v:detailed"
+        $publishArgs += "-v", "detailed"
     } else {
-        $msbuildArgs += "/v:minimal"
+        $publishArgs += "-v", "minimal"
     }
     
-    Write-Info "Running: msbuild $($msbuildArgs -join ' ')"
+    Write-Info "Running: dotnet $($publishArgs -join ' ')"
     
-    & msbuild $msbuildArgs
+    & dotnet $publishArgs
     
     if ($LASTEXITCODE -ne 0) {
-        throw "C# build failed with exit code $LASTEXITCODE"
+        throw "C# publish failed with exit code $LASTEXITCODE"
     }
     
     # Verify output
@@ -200,7 +319,7 @@ function Build-CSharpProject {
         throw "patcher.exe not found in output directory: $CSharpOutputDir"
     }
     
-    Write-Success "C# build completed"
+    Write-Success "C# build completed (self-contained, single-file)"
     Write-Info "Output: $CSharpOutputDir"
 }
 

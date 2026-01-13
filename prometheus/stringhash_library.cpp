@@ -8,6 +8,7 @@
 #include "window_manager/window_manager.h"
 #include <thread>
 #include <mutex>
+#include <atomic>
 
 namespace allmighty_hash_lib {
 	std::map<int, std::string> hashes{};
@@ -63,55 +64,68 @@ namespace allmighty_hash_lib {
 	}
 
 	std::thread save_thread = {};
+	std::atomic<bool> save_in_progress{false};
+	
 	//Mutexed
 	void save_all() {
 		if (!will_save) {
 			imgui_helpers::messageBox("Saving hashlibrary is disabled.", "Hashlib");
 			return;
 		}
-		//save_thread.joinable() is unreliable
-		if (save_thread.joinable()) {
+		
+		// Use atomic flag to prevent race condition
+		bool expected = false;
+		if (!save_in_progress.compare_exchange_strong(expected, true)) {
 			return;
 		}
+		
+		if (save_thread.joinable()) {
+			save_thread.join();
+		}
+		
 		save_thread = std::thread([] {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-			std::unique_lock lock(mut);
 			try {
 				nlohmann::json result{};
-				for (auto& hash : hashes) {
-					char buf[16];
-					sprintf_s(buf, "%x", hash.first);
-					result["db"].emplace(buf, hash.second);
+				{
+					std::unique_lock lock(mut);
+					for (auto& hash : hashes) {
+						char buf[16];
+						sprintf_s(buf, "%x", hash.first);
+						result["db"].emplace(buf, hash.second);
+					}
+					for (auto& comment : comments) {
+						char buf[32];
+						sprintf_s(buf, "%p", comment.first);
+						result["comments"].emplace(buf, comment.second);
+					}
+					for (auto& compo : components) {
+						char buf[32];
+						sprintf_s(buf, "%p", compo.first);
+						result["components"].emplace(buf, compo.second);
+					}
 				}
-				for (auto& comment : comments) {
-					char buf[32];
-					sprintf_s(buf, "%p", comment.first);
-					result["comments"].emplace(buf, comment.second);
-				}
-				for (auto& compo : components) {
-					char buf[32];
-					sprintf_s(buf, "%p", compo.first);
-					result["components"].emplace(buf, compo.second);
-				}
+				
 				std::ofstream fstream(filename, std::ios::out | std::ios::trunc);
 				if (!fstream.is_open()) {
 					imgui_helpers::messageBox("Filestream open error", "Hashlib");
+					save_in_progress.store(false);
 					return;
 				}
 				fstream << result.dump(4);
 				fstream.flush();
 				printf("Allmighty HASHLIB: saved :)\n");
-				save_thread.detach();
 			}
-			catch (nlohmann::json::exception ex) {
+			catch (nlohmann::json::exception& ex) {
 				imgui_helpers::messageBox("Failed to save hashlibrary.json. Saving is disabled. JSON Error: " + std::string(ex.what()), "Hashlib");
 			}
-			catch (std::exception ex) {
+			catch (std::exception& ex) {
 				imgui_helpers::messageBox("Failed to save hashlibrary.json. Saving is disabled. Error: " + std::string(ex.what()), "Hashlib");
 			}
 			catch (...) {
 				imgui_helpers::messageBox("Failed to save hashlibrary.json. Saving is disabled", "Hashlib");
 			}
+			save_in_progress.store(false);
 		});
 	}
 

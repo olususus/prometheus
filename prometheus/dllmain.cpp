@@ -8,7 +8,6 @@
 #include <mutex>
 #include <TlHelp32.h>
 #include <thread>
-#include <string>
 #include <locale>
 #include <codecvt>
 #include "ExceptionFormatter.h"
@@ -16,9 +15,8 @@
 #include <algorithm>
 #include <vector>
 #include <set>
-#include <string>
 #include <format>
-#include <thread>
+#include <filesystem>
 #include <nlohmann/json.hpp>
 #include <d3d11.h>
 #include "pe.h"
@@ -100,18 +98,24 @@ __int64(__fastcall* createwindow_orig)(__int64);
 
 std::wstring s2ws(const std::string& str)
 {
+#pragma warning(push)
+#pragma warning(disable: 4996) // std::codecvt_utf8 is deprecated in C++17
     using convert_typeX = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_typeX, wchar_t> converterX;
 
     return converterX.from_bytes(str);
+#pragma warning(pop)
 }
 
 std::string ws2s(const std::wstring& wstr)
 {
+#pragma warning(push)
+#pragma warning(disable: 4996) // std::codecvt_utf8 is deprecated in C++17
     using convert_typeX = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_typeX, wchar_t> converterX;
 
     return converterX.to_bytes(wstr);
+#pragma warning(pop)
 }
 
 unsigned char TlsCallback_0[] =
@@ -170,6 +174,7 @@ DWORD GetMainThreadId() {
     {
         if (tEntry.th32OwnerProcessID == currentPID) {
             result = tEntry.th32ThreadID;
+            break;
         }
     }
     CloseHandle(snapshot);
@@ -211,6 +216,13 @@ D3D11PresentHook phookD3D11Present = nullptr;
 LONG_PTR m_ulOldWndProc;
 ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 std::once_flag imgui_init{};
+
+void CleanupRenderTarget() {
+    if (g_mainRenderTargetView) {
+        g_mainRenderTargetView->Release();
+        g_mainRenderTargetView = NULL;
+    }
+}
 
 void CreateRenderTarget(IDXGISwapChain* swap, bool firstTime)
 {
@@ -260,13 +272,15 @@ const char* getClipboard(void*) {
     clipboard_fn fn = (clipboard_fn)(globals::gameBase + 0x8ab990);
     if (fn(0, &out)) {
         printf("GetClipboard succeessful\n");
-        char* str = new char[strlen(out.get())];
+        size_t len = strlen(out.get());
+        char* str = new char[len + 1];
         strcpy(str, out.get());
         return str;
     }
-    else
+    else {
         printf("GetClipboard failed\n");
-    return new char[0];
+    }
+    return nullptr;
 }
 
 IDXGISwapChain* main_swapchain = nullptr;
@@ -296,9 +310,26 @@ HRESULT __stdcall PresentHook(IDXGISwapChain* pSwapChain, UINT SyncInterval, UIN
             cfg.FontBuilderFlags |= ImGuiFreeTypeBuilderFlags_LoadColor;
             auto& io = ImGui::GetIO();
 
-            imgui_helpers::BoldFont = io.Fonts->AddFontFromFileTTF("MonaspaceXenon-ExtraBold.otf", 13);
-            io.Fonts->AddFontFromFileTTF("MonaspaceXenon-Regular.otf", 13/*, &cfg, ImGui::GetIO().Fonts->GetGlyphRangesDefault()*/);
-            io.FontDefault = ImGui::GetIO().Fonts->AddFontFromFileTTF("Font Awesome 6 Free-Solid-900.otf", 13, &cfg, ranges);
+            // Check if font files exist before attempting to load
+            if (std::filesystem::exists("MonaspaceXenon-ExtraBold.otf")) {
+                imgui_helpers::BoldFont = io.Fonts->AddFontFromFileTTF("MonaspaceXenon-ExtraBold.otf", 13);
+            } else {
+                printf("Warning: MonaspaceXenon-ExtraBold.otf not found, using default font\n");
+                imgui_helpers::BoldFont = io.Fonts->AddFontDefault();
+            }
+            
+            if (std::filesystem::exists("MonaspaceXenon-Regular.otf")) {
+                io.Fonts->AddFontFromFileTTF("MonaspaceXenon-Regular.otf", 13/*, &cfg, ImGui::GetIO().Fonts->GetGlyphRangesDefault()*/);
+            } else {
+                printf("Warning: MonaspaceXenon-Regular.otf not found\n");
+            }
+            
+            if (std::filesystem::exists("Font Awesome 6 Free-Solid-900.otf")) {
+                io.FontDefault = ImGui::GetIO().Fonts->AddFontFromFileTTF("Font Awesome 6 Free-Solid-900.otf", 13, &cfg, ranges);
+            } else {
+                printf("Warning: Font Awesome 6 Free-Solid-900.otf not found, using default font\n");
+                io.FontDefault = io.Fonts->AddFontDefault();
+            }
 
             io.ConfigFlags |= ImGuiConfigFlags_DockingEnable /*| ImGuiConfigFlags_ViewportsEnable*/; //TODO: Viewports
             io.ConfigDockingWithShift = true;
@@ -367,8 +398,14 @@ __int64 __fastcall createwindow_hook(__int64 gameManager) {
     auto handle = createwindow_orig(gameManager);
     printf("window handle: %x\n", handle);
     globals::gameWindow = handle;
+    
+    // Note: This thread is intentionally detached as it needs to run for the lifetime of the application
+    // and will terminate when the process exits. It polls for the render interface initialization.
     std::thread([]() {
-        while (true) {
+        const int max_attempts = 100;  // Timeout after ~10 seconds
+        int attempts = 0;
+        
+        while (attempts++ < max_attempts) {
             Sleep(100);
             //teEngine ínstance
             DWORD_PTR render = *(DWORD_PTR*)(globals::gameBase + 0x181e3e0);
@@ -394,9 +431,15 @@ __int64 __fastcall createwindow_hook(__int64 gameManager) {
                 continue;
             MH_VERIFY(MH_CreateHook((DWORD_PTR*)render, PresentHook, reinterpret_cast<void**>(&phookD3D11Present)));
             MH_VERIFY(MH_EnableHook((DWORD_PTR*)render));
+            printf("Present hook installed successfully\n");
             break;
         }
-        }).detach();
+        
+        if (attempts >= max_attempts) {
+            printf("Failed to install Present hook: timeout\n");
+        }
+    }).detach();
+    
     return handle;
 }
 
@@ -936,7 +979,7 @@ void __cdecl StartHook(void*) {
     memcpy((void*)(globals::gameBase + 0x00000000007EBFEA), std::array<unsigned char, 5>{0xe9, 0xd1, 0x3, 0x0, 0x0}.data(), 0x5);
     memcpy((void*)(globals::gameBase + 0x0000000000C24AAE), std::array<unsigned char, 5>{0xe9, 0xd3, 0x0, 0x0, 0x0}.data(), 0x5);
     memcpy((void*)(globals::gameBase + 0x0000000000C3CF5B), std::array<unsigned char, 5>{0xe9, 0xf0, 0x3, 0x0, 0x0}.data(), 0x5);
-    memcpy((void*)(globals::gameBase + 0x0000000000C51A0E), std::array<unsigned char, 5>{0xe9, 0xac, 0x2, 0x0, 0x0}.data(), 0x5);
+    memcpy((void*)(globals::gameBase + 0x0000000000C51A0E), std::array<unsigned char, 5>{0xe9, 0xac, 0x2, 0x0,  0x0}.data(), 0x5);
     memcpy((void*)(globals::gameBase + 0x000000000080D19D), std::array<unsigned char, 5>{0xe9, 0x63, 0x3, 0x0, 0x0}.data(), 0x5);
     memcpy((void*)(globals::gameBase + 0x000000000080A1C0), std::array<unsigned char, 5>{0xe9, 0x5b, 0x4, 0x0, 0x0}.data(), 0x5);
     memcpy((void*)(globals::gameBase + 0x00000000007EC593), std::array<unsigned char, 5>{0xe9, 0x2d, 0x7, 0x0, 0x0}.data(), 0x5);

@@ -405,3 +405,4 @@ FodyWeavers.xsd
 
 vcpkg_installed/
 output/
+/BUILD_README.md

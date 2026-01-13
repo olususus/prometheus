@@ -15,6 +15,7 @@ namespace renderer {
 	void begin_frame();
 	void end_frame();
 	void quit();
+	void cleanup();
 	void refresh_window_properties();
 	bool LoadTextureFromFile(const char* filename, void** out_srv, int wanted_width, int wanted_height);
 	void ChangeClickability(bool canclick);

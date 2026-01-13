@@ -116,7 +116,9 @@ void window_manager::kill_dependents(window* from) {
 	if (!ref)
 		return;
 	for (auto& window : s_windows) {
-		window->_wants_delete = true;
+		if (window->is_dependent && window->created_by.lock() == ref) {
+			window->_wants_delete = true;
+		}
 	}
 }
 

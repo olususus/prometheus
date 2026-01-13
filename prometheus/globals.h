@@ -1,4 +1,4 @@
-﻿ #pragma once
+﻿#pragma once
 #include <algorithm>
 #include <format>
 #include <string>
@@ -177,7 +177,7 @@ struct teList {
 
 	void remove_item(int index) {
 		owassert(index < num);
-		memcpy((void*)(ptr + sizeof(T) * index), (void*)(ptr + sizeof(T) * (index + 1)), sizeof(T) * (num - index - 1));
+		memmove(ptr + index, ptr + index + 1, sizeof(T) * (num - index - 1));
 		num--;
 	}
 

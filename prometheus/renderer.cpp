@@ -59,7 +59,14 @@ bool renderer::LoadTextureFromFile(const char* filename, void** out_srv, int wan
 	subResource.pSysMem = image_data;
 	subResource.SysMemPitch = desc.Width * 4;
 	subResource.SysMemSlicePitch = 0;
-	d3d_device->CreateTexture2D(&desc, &subResource, &pTexture);
+	HRESULT hr = d3d_device->CreateTexture2D(&desc, &subResource, &pTexture);
+	
+	if (FAILED(hr) || !pTexture) {
+		printf("Failed to create texture from %s\n", filename);
+		stbi_image_free(image_unresized_data);
+		delete[] image_data;
+		return false;
+	}
 
 	// Create texture view
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -68,11 +75,16 @@ bool renderer::LoadTextureFromFile(const char* filename, void** out_srv, int wan
 	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = desc.MipLevels;
 	srvDesc.Texture2D.MostDetailedMip = 0;
-	d3d_device->CreateShaderResourceView(pTexture, &srvDesc, (ID3D11ShaderResourceView**)out_srv);
+	hr = d3d_device->CreateShaderResourceView(pTexture, &srvDesc, (ID3D11ShaderResourceView**)out_srv);
 	pTexture->Release();
 
 	stbi_image_free(image_unresized_data);
 	delete[] image_data;
+
+	if (FAILED(hr)) {
+		printf("Failed to create shader resource view from %s\n", filename);
+		return false;
+	}
 
 	return true;
 }
@@ -153,11 +165,42 @@ void renderer::begin_frame() {
 }
 
 void renderer::quit() {
+	cleanup();
+	
 	DWORD procID;
 	GetWindowThreadProcessId(render_window, &procID);
-	TerminateProcess(OpenProcess(PROCESS_TERMINATE, false, procID), 0);
+	HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, false, procID);
+	if (hProcess) {
+		TerminateProcess(hProcess, 0);
+		CloseHandle(hProcess);
+	}
 
 	TerminateProcess(GetCurrentProcess(), 0);
+}
+
+void renderer::cleanup() {
+	// Cleanup ImGui
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
+	
+	// Cleanup DirectX resources
+	if (d3d_rtv) {
+		d3d_rtv->Release();
+		d3d_rtv = nullptr;
+	}
+	if (dxgi_chain) {
+		dxgi_chain->Release();
+		dxgi_chain = nullptr;
+	}
+	if (d3d_context) {
+		d3d_context->Release();
+		d3d_context = nullptr;
+	}
+	if (d3d_device) {
+		d3d_device->Release();
+		d3d_device = nullptr;
+	}
 }
 
 void renderer::end_frame() {

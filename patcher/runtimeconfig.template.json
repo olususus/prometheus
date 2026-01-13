@@ -1,0 +1,14 @@
+{
+  "runtimeOptions": {
+    "configProperties": {
+      "System.Runtime.TieredCompilation": true,
+      "System.Runtime.TieredCompilation.QuickJit": true,
+      "System.Runtime.TieredCompilation.QuickJitForLoops": true,
+      "System.GC.Server": true,
+      "System.GC.Concurrent": true,
+      "System.GC.RetainVM": true,
+      "System.Threading.ThreadPool.MinThreads": 4,
+      "System.Threading.ThreadPool.MaxThreads": 8
+    }
+  }
+}
