@@ -1,2 +1,2 @@
-[tslocum](https://github.com/tslocum)
-[Hazno-dev](https://github.com/Hazno-dev)
+* [tslocum](https://github.com/tslocum)
+* [Hazno-dev](https://github.com/Hazno-dev)
