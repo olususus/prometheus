@@ -1,4 +1,4 @@
-#include "stringhash_library.h";
+#include "stringhash_library.h"
 #include <imgui.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -24,8 +24,9 @@ namespace allmighty_hash_lib {
 			ImGui::Text("%s ", prepend);
 			ImGui::SameLine();
 		}
-		if (hashes.find(hash) != hashes.end()) {
-			ImGui::Text("%x (%s)", hash, hashes[hash].c_str());
+		auto it = hashes.find(hash);
+		if (it != hashes.end()) {
+			ImGui::Text("%x (%s)", hash, it->second.c_str());
 		}
 		else {
 			ImGui::Text("%x", hash);
@@ -47,18 +48,18 @@ namespace allmighty_hash_lib {
 		}
 	}
 
-	void add_comment(__int64 key, std::string value, bool force_override) {
+	void add_comment(__int64 key, const std::string& value, bool force_override) {
 		std::unique_lock lock(mut);
-		if (comments.find(key) == comments.end()) {
+		auto it = comments.find(key);
+		if (it == comments.end()) {
 			comments.emplace(key, value);
 			save_all();
 		}
 		else if (force_override) {
-			std::string buf = comments[key];
-			if (buf == value)
+			if (it->second == value)
 				return;
-			printf("Override %p: from '%s' to '%s'\n", key, buf.c_str(), value.c_str());
-			comments[key] = value;
+			printf("Override %p: from '%s' to '%s'\n", key, it->second.c_str(), value.c_str());
+			it->second = value;
 			save_all();
 		}
 	}
