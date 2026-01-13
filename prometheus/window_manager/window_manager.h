@@ -224,8 +224,14 @@ private:
 	static void call_window_render(window*);
 
 	//STATIC INITIALIZERS ARE GREAT!
-	static inline std::set<std::string>* s_window_categories = nullptr;
-	static inline std::map<window_type, window_data>* s_all_windows = nullptr;
+	static std::set<std::string>& s_window_categories() {
+		static std::set<std::string> inst;
+		return inst;
+	}
+	static std::map<window_type, window_data>& s_all_windows() {
+		static std::map<window_type, window_data> inst;
+		return inst;
+	}
 
 	//friend class management_window;
 	friend class window;
@@ -333,10 +339,11 @@ namespace imgui_helpers {
 
 	inline bool InputHex(std::string label, __int64* num) {
 		owassert(num != nullptr);
-		char buf[32];
-		sprintf_s(buf, "%p", *num);
-		if (ImGui::InputText(label.c_str(), buf, 32)) {
-			*num = _strtoi64(buf, nullptr, 16);
+		//char buf[32];
+		//sprintf_s(buf, "%p", *num);
+		std::string buf = std::format("{:x}", *num);
+		if (ImGui::InputText(label.c_str(), buf.data(), 32)) {
+			*num = _strtoi64(buf.c_str(), nullptr, 16);
 			return true;
 		}
 		return false;
@@ -344,10 +351,11 @@ namespace imgui_helpers {
 
 	inline bool InputHex(std::string label, int* num) {
 		owassert(num != nullptr);
-		char buf[32];
-		sprintf_s(buf, "%x", *num);
-		if (ImGui::InputText(label.c_str(), buf, 32)) {
-			*num = _strtoi64(buf, nullptr, 16);
+		//char buf[32];
+		//sprintf_s(buf, "%x", *num);
+		std::string buf = std::format("{:x}", *num);
+		if (ImGui::InputText(label.c_str(), buf.data(), 32)) {
+			*num = _strtoi64(buf.c_str(), nullptr, 16);
 			return true;
 		}
 		return false;

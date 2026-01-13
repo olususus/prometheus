@@ -1,8 +1,10 @@
 ﻿ #pragma once
-#include "intrin.h"
-#include "string"
-#include <Windows.h>
 #include <algorithm>
+#include <format>
+#include <string>
+#include <Windows.h>
+
+#include "intrin.h"
 
 #define owassert(expr) if (!(expr)) { printf("%s:%d\n", "FAILED ASSERTION:\nAssertion: " #expr "\nAt: " __FILE__, __LINE__); }
 
@@ -195,11 +197,9 @@ namespace globals {
 	extern bool switchGameEA;
 }
 
-namespace std {
+namespace utils {
 	inline std::string to_string_hex(int input) {
-		char buf[16];
-		sprintf_s(buf, "%x", input);
-		return buf;
+		return std::format("{:x}", input);
 	}
 }
 

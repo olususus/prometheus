@@ -25,13 +25,9 @@ bool window_manager::window_id_exists(int window_id) {
 }
 
 void window_manager::register_window(window* instance) {
-	if (s_all_windows == nullptr)
-		s_all_windows = new std::map<window_type, window_data>;
-
-	if (s_window_categories == nullptr)
-		s_window_categories = new std::set<std::string>;
 
 	/*
+
 	Dear Microsoft,
 	
 	Why does this code suddenly try to EXECUTE "instance" (literally jumps to the address of instance)
@@ -41,34 +37,37 @@ void window_manager::register_window(window* instance) {
 	Kind Reagards,
 	Someone who has had enough of this dumpster fire of a compiler and will switch to NixOS and clang.
 	Update: after one month of pain while trying to switch i will do that laterTM
+
+
+	Update2 (someone else now): Meyers Singleton implemented. No more manual memory management needed here.
 	*/
 
 	const char* window_name = instance->window_name();
 	//printf("Dont optimize me away please: %s\n", window_name);
 	auto ptr = std::unique_ptr<window>(instance);
 	auto data = window_data{ std::move(ptr), instance->category_name(), window_name};
-	s_all_windows->emplace(instance->get_window_type(), std::move(data));
-	s_window_categories->emplace(instance->category_name());
+	s_all_windows().emplace(instance->get_window_type(), std::move(data));
+	s_window_categories().emplace(instance->category_name());
 	//printf("Window manager: registered window '%s' (Category '%s').\n", instance->window_name(), instance->category_name());
 }
 
 void window_manager::call_preStartInitialize() {
-	for (auto& window : *s_all_windows) {
+	for (auto& window : s_all_windows()) {
 		window.second.helper_instance->preStartInitialize();
 	}
 }
 
 std::set<std::string>& window_manager::get_window_categories() {
-	return *s_window_categories;
+	return s_window_categories();
 }
 
 const std::map<window_type, window_manager::window_data>& window_manager::get_all_windows() {
-	return *s_all_windows;
+	return s_all_windows();
 }
 
 void window_manager::add_default_window(window_type typ) {
-	auto result = s_all_windows->find(typ);
-	if (result != s_all_windows->end()) {
+	auto result = s_all_windows().find(typ);
+	if (result != s_all_windows().end()) {
 		add_window(result->second.helper_instance->create_self()); //leaving parent empty for now.
 	}
 }
@@ -501,8 +500,9 @@ namespace imgui_helpers {
 					openCopyWindow((__int64)value);
 				}
 				else {
-					char buf[32];
-					sprintf_s(buf, sel == 1 ? format_specifier : format_specifier_2, *value);
+					//char buf[32];
+					//sprintf_s(buf, sel == 1 ? format_specifier : format_specifier_2, *value);
+					auto buf = sel == 1 ? std::format(std::string(format_specifier).length() == 3 ? "{:d}" : "{:x}", *value) : std::format("{:x}", *value);
 					openCopyWindow(buf);
 				}
 			}));
@@ -541,13 +541,15 @@ namespace imgui_helpers {
 		}
 
 		ImGui::SameLine();
-		char buf[32];
+		//char buf[32];
 		if (format_specifier_2) {
-			sprintf_s(buf, "%%s: %s (%s)", format_specifier, format_specifier_2);
-			ImGui::Text(buf, text, *value, *value);
+			//sprintf_s(buf, "%%s: %s (%s)", format_specifier, format_specifier_2);
+			auto str = std::format("%s: {} ({})", format_specifier, format_specifier_2); //Note: this is a bit hacky as we rely on ImGui to format %s
+			ImGui::Text(str.c_str(), text, *value, *value);
 		} else {
-			sprintf_s(buf, "%%s: %s", format_specifier);
-			ImGui::Text(buf, text, *value);
+			//sprintf_s(buf, "%%s: %s", format_specifier);
+			auto str = std::format("%s: {}", format_specifier);
+			ImGui::Text(str.c_str(), text, *value);
 		}
 
 		ImGui::PopID();

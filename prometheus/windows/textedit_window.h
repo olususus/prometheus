@@ -15,7 +15,7 @@ class textedit_window : public window {
 			}
 			ImGui::SameLine();
 			if (ImGui::Button(EMOJI_CHECK)) {
-				_save_lambda(std::string(*_text_buffer.get()));
+				_save_lambda(std::string(_text_buffer.data()));
 				this->queue_deletion();
 			}
 			ImGui::SameLine();
@@ -23,16 +23,13 @@ class textedit_window : public window {
 				this->queue_deletion();
 			}
 			ImGui::SameLine();
-			int len = strlen(*_text_buffer.get());
-			ImGui::Text("%d/%d", len, _text_buffer_size);
-			bool edited = _collapsed_textbox ? ImGui::InputText("##input", *_text_buffer.get(), 999999) :
-				ImGui::InputTextMultiline("##input2", *_text_buffer.get(), 999999, ImVec2(-10, -10));
+			int len = strlen(_text_buffer.data());
+			ImGui::Text("%d/%d", len, _text_buffer.size());
+			bool edited = _collapsed_textbox ? ImGui::InputText("##input", _text_buffer.data(), _text_buffer.size()) :
+				ImGui::InputTextMultiline("##input2", _text_buffer.data(), _text_buffer.size(), ImVec2(-10, -10));
 			if (edited) {
-				if (_text_buffer_size - len < 10) {
-					char* new_buf = new char[len + buffer];
-					_text_buffer_size = len + buffer;
-					strcpy(new_buf, *_text_buffer.get());
-					_text_buffer = std::make_unique<char*>(new_buf);
+				if (_text_buffer.size() - len < 10) {
+					_text_buffer.resize(len + buffer);
 				}
 			}
 		}
@@ -45,16 +42,18 @@ class textedit_window : public window {
 public:
 	textedit_window() { }
 	textedit_window(std::string input, std::function<void(std::string)> save_lambda) {
-		_text_buffer = std::make_unique<char*>(new char[_text_buffer_size = input.size() + buffer]);
-		strcpy(*_text_buffer.get(), input.c_str());
+		_text_buffer.resize(input.size() + buffer);
+		std::copy(input.begin(), input.end(), _text_buffer.begin());
+		_text_buffer[input.size()] = '\0'; // Ensure null termination
+		
 		_save_lambda = save_lambda;
 		if (icontains(input, "\n"))
 			_collapsed_textbox = false;
 	}
 
 private:
-	std::unique_ptr<char*> _text_buffer;
-	int _text_buffer_size;
+	std::vector<char> _text_buffer;
+	//int _text_buffer_size; // No longer needed
 	bool _collapsed_textbox = true;
 	std::function<void(std::string)> _save_lambda;
 };

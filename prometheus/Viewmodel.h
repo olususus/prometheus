@@ -72,7 +72,7 @@ inline std::string VMPropTypeToString(ViewModelPropertyType typ) {
 		default:
 			result = "unk";
 	}
-	return result + " (" + std::to_string_hex(typ) + ")";
+	return result + " (" + utils::to_string_hex(typ) + ")";
 }
 
 struct ViewModelProperty {
