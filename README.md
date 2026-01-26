@@ -216,7 +216,7 @@ The most important thing is the list of MovementState in component 12. It holds 
 * Weapons don't shoot: I have no idea, did not look into that yet. Probably a system which needs to be explored first or a statescript var that needs to be set.
 * Main Menu buttons don't work: Main menu buttons only send JAM messages to the server saying "hey i want to join a game". So that needs to be implemented
 * Some abilities do not work: Some stuff does depend on the server sending you stuff and acknowledging. This is a TODO for the future.
-* Practice Range does not give you hero selection screen: This is because the server spawns Tracer for you automatically. Use the Player Spawner Deluxe.
+* Tutorial does not give you hero selection screen: This is because the server spawns Tracer for you automatically. Use the Player Spawner Deluxe. You may also need to set the world state to "World Running" in the top bar in order to get out of the loading screen.
 * Doors, Capture Points and Payloads get placed at (0,0,0) in the map: This is because the client by default does NOT load all entities from the map. There is a "load filter" which I bypass (see selectiveResLoad_hook in dllmain.cpp). BUT I have seen that the LobbyMap entity admin does, in fact, place them at the right positions. I dont know why this happens, TODO.
 * "hashlibrary saving is disabled" message box window gets spammed: Could not save hashlibrary.json. Maybe a permission issue.
 * Map unloading crashes the game: This is still a TODO. If you despawn your local hero and all the entities that were spawned by bypassing selective resource loading (see above), it will successfully unload the map without crashing. Just restart your game for now.
